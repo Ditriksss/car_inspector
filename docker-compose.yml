@@ -1,0 +1,70 @@
+version: '3'
+
+services:
+  apicars:
+    image: ditrikss/api_cars
+    build: ./api_car/
+    restart: always
+    ports:
+      - 6001:80
+    depends_on:
+        - dbcars
+        - apistatistics
+    environment:
+        port: 80
+        proxy_url: https://www.mockachino.com/63df88f9-7c68-4e/evs
+        api_statistics_url: http://apistatistics:80/api/cars
+        db_user: postgres
+        db_host: dbcars
+        db_name: db_cars
+        db_password: postgres
+        db_port: 5432
+  dbcars:
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: db_cars
+    ports:
+      - '5438:5432'
+    volumes: 
+      - ./db/scripts/db_cars/cars.table.create.sql:/docker-entrypoint-initdb.d/create_tables.sql
+  apistatistics:
+    image: ditrikss/api_statistic
+    build: ./api_statistic/
+    restart: always
+    ports:
+      - 6002:80
+    depends_on:
+        - dbstatistics
+    environment:
+        proxy_url: https://www.mockachino.com/63df88f9-7c68-4e/evs/
+        port: 80
+        db_user: postgres
+        db_host: dbstatistics
+        db_name: db_statistics
+        db_password: postgres
+        db_port: 5432
+  dbstatistics:
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: db_statistics
+    ports:
+      - '5439:5432'
+    volumes: 
+      - ./db/scripts/db_statistics/tables.create.sql:/docker-entrypoint-initdb.d/create_tables.sql
+  apigateway:
+    image: ditrikss/api_gateway
+    build: ./api_gateway/
+    restart: always
+    ports:
+      - 6003:80
+    depends_on:
+        - apicars
+        - apistatistics
+    environment:
+        api_cars_url: http://apicars:80/
+        api_statistics_url: http://apistatistics:80/
+        port: 80
